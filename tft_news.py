@@ -7,7 +7,6 @@ TARGET_URL = "https://teamfighttactics.leagueoflegends.com/tr-tr/news/"
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 LAST_NEWS_FILE = "last_news.txt"
 ROLE_ID = "1483254703818276976"
-CLUB_LOGO_URL = "https://i.imgur.com/sqOABeG.jpeg"
 
 def get_news_list():
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -16,6 +15,8 @@ def get_news_list():
         response = requests.get(TARGET_URL, headers=headers)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Sayfadaki haber kartlarını bul (Son 5 tanesi)
         cards = soup.find_all('a', href=True, limit=5)
         
         for card in cards:
@@ -54,26 +55,18 @@ def main():
         new_items_to_post.append(item)
 
     if new_items_to_post:
+        # En eskiden yeniye doğru gönder (Ters sıralama)
         for news in reversed(new_items_to_post):
-            # ESKİ DİZAYN: Haber metni ve linki "content" içine geri alındı (Kutunun dışı).
+            # TAM İSTEDİĞİN SADE DİZAYN: Sadece content var, Embed yok.
             payload = {
                 "username": "TFT Haber Botu",
-                "content": f"📢 **TFT Sayfasında Yeni Bir Güncelleme Var!** <@&{ROLE_ID}>\n\n**{news['title']}**\n{news['link']}",
-                "embeds": [
-                    {
-                        # Renk kodunu Discord'un koyu tema arka planına (#313338) eşitledik.
-                        # Böylece o sol taraftaki sarı çizgi "görünmez" hale gelecek.
-                        "color": 3224376, 
-                        "footer": {
-                            "text": "Eskişehir Riot Games Kampüs Elçiliği",
-                            "icon_url": CLUB_LOGO_URL
-                        }
-                    }
-                ]
+                "content": f"📢 **TFT Sayfasında Yeni Bir Güncelleme Var!** <@&{ROLE_ID}>\n\n**{news['title']}**\n{news['link']}"
             }
+            
             requests.post(WEBHOOK_URL, json=payload)
             print(f"Gönderildi: {news['title']}")
 
+        # En son haberin linkini dosyaya kaydet
         with open(LAST_NEWS_FILE, "w") as f:
             f.write(all_news[0]['link'])
     else:
