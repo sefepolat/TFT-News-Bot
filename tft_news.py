@@ -13,74 +13,64 @@ def get_news_list():
     news_items = []
     try:
         response = requests.get(TARGET_URL, headers=headers)
+        response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Sayfadaki tüm linkleri bul
-        all_links = soup.find_all('a', href=True)
-        print(f"DEBUG: Sayfada toplam {len(all_links)} link bulundu.")
+        # Sayfadaki haber kartlarını bul (Son 5 tanesi)
+        cards = soup.find_all('a', href=True, limit=5)
         
-        for card in all_links:
+        for card in cards:
+            title_element = card.find('h2') or card.select_one('[class*="title"]')
+            if title_element:
+                title = title_element.get_text().strip()
+            else:
+                title = card.get_text(separator='|').split('|')[0].strip()
+
             link = card['href']
             if not link.startswith('http'):
                 link = "https://teamfighttactics.leagueoflegends.com" + link
             
-            # Sadece gerçek haber linklerini al ve linki temizle (sonundaki / işaretini sil)
-            clean_link = link.strip().rstrip('/')
-            
-            if "/news/" in clean_link or "/game-updates/" in clean_link:
-                title_element = card.find(['h2', 'h3']) or card.select_one('[class*="title"]')
-                title = title_element.get_text().strip() if title_element else "TFT Duyurusu"
-                
-                # Tekrar eden linkleri engelle
-                if not any(item['link'] == clean_link for item in news_items):
-                    news_items.append({"title": title, "link": clean_link})
+            if "/news/" in link or "/game-updates/" in link:
+                news_items.append({"title": title, "link": link})
         
-        print(f"DEBUG: Toplam {len(news_items)} geçerli haber linki ayıklandı.")
         return news_items
     except Exception as e:
-        print(f"HATA (Scraping): {e}")
+        print(f"Hata: {e}")
         return []
 
 def main():
     all_news = get_news_list()
-    if not all_news:
-        print("HATA: Hiç haber bulunamadı!")
-        return
+    if not all_news: return
 
-    # Dosyadaki son linki oku ve temizle
-    last_link = ""
     if os.path.exists(LAST_NEWS_FILE):
         with open(LAST_NEWS_FILE, "r") as f:
-            last_link = f.read().strip().rstrip('/')
-    
-    print(f"DEBUG: Veritabanındaki (txt) son link: '{last_link}'")
+            last_link = f.read().strip()
+    else:
+        last_link = ""
 
-    # Yeni haberleri bul
     new_items_to_post = []
     for item in all_news:
         if item['link'] == last_link:
-            print(f"DEBUG: '{item['link']}' linkine ulaşıldı, daha eskilere bakılmıyor.")
             break
         new_items_to_post.append(item)
 
     if new_items_to_post:
-        print(f"DEBUG: {len(new_items_to_post)} adet YENİ haber gönderiliyor...")
-        
-        # Eskiden yeniye sırala ve gönder
+        # En eskiden yeniye doğru gönder (Ters sıralama)
         for news in reversed(new_items_to_post):
+            # TAM İSTEDİĞİN SADE DİZAYN: Sadece content var, Embed yok.
             payload = {
                 "username": "TFT Haber Botu",
                 "content": f"📢 **TFT Sayfasında Yeni Bir Güncelleme Var!** <@&{ROLE_ID}>\n\n**{news['title']}**\n{news['link']}"
             }
-            res = requests.post(WEBHOOK_URL, json=payload)
-            print(f"DEBUG: Gönderildi: {news['title']} (Durum Kodu: {res.status_code})")
+            
+            requests.post(WEBHOOK_URL, json=payload)
+            print(f"Gönderildi: {news['title']}")
 
-        # EN YENİ haberi dosyaya kaydet
+        # En son haberin linkini dosyaya kaydet
         with open(LAST_NEWS_FILE, "w") as f:
             f.write(all_news[0]['link'])
-        print(f"DEBUG: {LAST_NEWS_FILE} güncellendi: {all_news[0]['link']}")
     else:
-        print("DURUM: Yeni haber yok, her şey güncel.")
+        print("Yeni haber yok.")
 
 if __name__ == "__main__":
     main()
