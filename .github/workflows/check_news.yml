@@ -5,7 +5,6 @@ on:
     - cron: '17 * * * *'
   workflow_dispatch:
 
-# Artık buna gerek kalmayabilir ama kalsa da zararı olmaz
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -17,12 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5 # v4 -> v5 (Node 24 desteği için)
+        uses: actions/checkout@v4 # v5'teki bazı token senkronizasyon bugları nedeniyle stabil v4'e çektik
+        with:
+          persist-credentials: true # Git push yaparken Actions token'ının kalıcı olmasını sağlar (403'ü engeller)
 
       - name: Set up Python
-        uses: actions/setup-python@v6 # v5 -> v6 (Node 24 desteği için)
+        uses: actions/setup-python@v5 # Node 24 uyumlu en stabil v5 sürümü
         with:
-          python-version: '3.12' # 2026'da 3.12 oldukça stabil
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
