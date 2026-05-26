@@ -5,6 +5,10 @@ on:
     - cron: '17 * * * *'
   workflow_dispatch:
 
+# 🌟 UYARIYI YOK EDEN KISIM: GitHub Actions'a doğrudan Node 24 kullanmasını emrediyoruz
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -13,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2 # Node 24'ü doğrudan destekleyen en kararlı alt sürüm
+        uses: actions/checkout@v4
         with:
           persist-credentials: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5.4.0 # Node 24'ü doğrudan destekleyen en kararlı alt sürüm
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
